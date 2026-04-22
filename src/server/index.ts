@@ -1,6 +1,15 @@
 import amqp from "amqplib";
-import { ExchangePerilDirect, PauseKey } from "../internal/routing/routing.js";
-import { publishJSON } from "../internal/pubsub/publish.js";
+import {
+  ExchangePerilDirect,
+  ExchangePerilTopic,
+  GameLogSlug,
+  PauseKey,
+} from "../internal/routing/routing.js";
+import {
+  declareAndBind,
+  publishJSON,
+  SimpleQueueType,
+} from "../internal/pubsub/publish.js";
 import type { PlayingState } from "../internal/gamelogic/gamestate.js";
 import { getInput, printServerHelp } from "../internal/gamelogic/gamelogic.js";
 
@@ -17,7 +26,13 @@ async function main() {
     isPaused: true,
   };
 
-  // await publishJSON(confChannel, ExchangePerilDirect, PauseKey, state);
+  const [channel, queue] = await declareAndBind(
+    conn,
+    ExchangePerilTopic,
+    GameLogSlug,
+    `${GameLogSlug}.*`,
+    SimpleQueueType.Durable,
+  );
 
   console.log("Starting Peril server...");
 
