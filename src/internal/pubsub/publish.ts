@@ -46,6 +46,9 @@ export async function declareAndBind(
       durable: false,
       autoDelete: true,
       exclusive: true,
+      arguments: {
+        "x-dead-letter-exchange": "peril_dlx",
+      },
     });
   } else {
     queue = await channel.assertQueue(queueName, {
