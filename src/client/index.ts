@@ -11,6 +11,8 @@ import { ExchangePerilDirect, PauseKey } from "../internal/routing/routing.js";
 import { GameState } from "../internal/gamelogic/gamestate.js";
 import { commandSpawn } from "../internal/gamelogic/spawn.js";
 import { commandMove } from "../internal/gamelogic/move.js";
+import { subscribeJSON } from "../internal/pubsub/subscribe.js";
+import { handlerPause } from "./handlers.js";
 
 async function main() {
   const rabbitCon = `amqp://guest:guest@localhost:5672/`;
@@ -32,6 +34,15 @@ async function main() {
   console.log("Starting Peril client...");
 
   let gs = new GameState(username);
+
+  subscribeJSON(
+    conn,
+    ExchangePerilDirect,
+    `pause.${username}`,
+    PauseKey,
+    SimpleQueueType.Transient,
+    handlerPause(gs),
+  );
 
   while (true) {
     const inputs = await getInput();
