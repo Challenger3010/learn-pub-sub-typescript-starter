@@ -13,7 +13,7 @@ export async function subscribeJSON<T>(
   queueName: string,
   key: string,
   queueType: SimpleQueueType,
-  handler: (data: T) => Acktype,
+  handler: (data: T) => Promise<Acktype>,
 ) {
   const [channel, queue] = await declareAndBind(
     conn,
@@ -23,45 +23,48 @@ export async function subscribeJSON<T>(
     queueType,
   );
 
-  await channel.consume(queue.queue, (msg: amqp.ConsumeMessage | null) => {
-    if (!msg) {
-      return;
-    }
-
-    let data: T;
-
-    try {
-      data = JSON.parse(msg.content.toString());
-    } catch (err) {
-      console.error("Could not unmarshal message:", err);
-      return;
-    }
-
-    try {
-      const result = handler(data);
-
-      switch (result) {
-        case Acktype.Ack:
-          channel.ack(msg);
-          console.log("ACK");
-          break;
-        case Acktype.NackDiscard:
-          channel.nack(msg, false, false);
-          console.log("NACK DISCARD");
-          break;
-        case Acktype.NackRequeue:
-          channel.nack(msg, false, true);
-          console.log("NACK REQUEUE");
-          break;
-        default:
-          const unreachable: never = result;
-          console.error("Unexpected ack type:", unreachable);
-          return;
+  await channel.consume(
+    queue.queue,
+    async (msg: amqp.ConsumeMessage | null) => {
+      if (!msg) {
+        return;
       }
-    } catch (err) {
-      console.error("Error handling message:", err);
-      channel.nack(msg, false, false);
-      return;
-    }
-  });
+
+      let data: T;
+
+      try {
+        data = JSON.parse(msg.content.toString());
+      } catch (err) {
+        console.error("Could not unmarshal message:", err);
+        return;
+      }
+
+      try {
+        const result = await handler(data);
+
+        switch (result) {
+          case Acktype.Ack:
+            channel.ack(msg);
+            console.log("ACK");
+            break;
+          case Acktype.NackDiscard:
+            channel.nack(msg, false, false);
+            console.log("NACK DISCARD");
+            break;
+          case Acktype.NackRequeue:
+            channel.nack(msg, false, true);
+            console.log("NACK REQUEUE");
+            break;
+          default:
+            const unreachable: never = result;
+            console.error("Unexpected ack type:", unreachable);
+            return;
+        }
+      } catch (err) {
+        console.error("Error handling message:", err);
+        channel.nack(msg, false, false);
+        return;
+      }
+    },
+  );
 }
