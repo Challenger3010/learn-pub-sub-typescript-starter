@@ -1,5 +1,6 @@
 import { decode } from "@msgpack/msgpack";
 import amqp, { type Channel } from "amqplib";
+import { declareAndBind } from "./publish.js";
 
 export enum AckType {
   Ack,
@@ -10,28 +11,6 @@ export enum AckType {
 export enum SimpleQueueType {
   Durable,
   Transient,
-}
-
-export async function declareAndBind(
-  conn: amqp.ChannelModel,
-  exchange: string,
-  queueName: string,
-  key: string,
-  queueType: SimpleQueueType,
-): Promise<[Channel, amqp.Replies.AssertQueue]> {
-  const ch = await conn.createChannel();
-
-  const queue = await ch.assertQueue(queueName, {
-    durable: queueType === SimpleQueueType.Durable,
-    exclusive: queueType !== SimpleQueueType.Durable,
-    autoDelete: queueType !== SimpleQueueType.Durable,
-    arguments: {
-      "x-dead-letter-exchange": "peril_dlx",
-    },
-  });
-
-  await ch.bindQueue(queue.queue, exchange, key);
-  return [ch, queue];
 }
 
 export async function subscribe<T>(
@@ -50,6 +29,8 @@ export async function subscribe<T>(
     routingKey,
     queueType,
   );
+
+  await ch.prefetch(1);
 
   await ch.consume(
     queue.queue,

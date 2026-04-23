@@ -3,6 +3,7 @@ import {
   clientWelcome,
   commandStatus,
   getInput,
+  getMaliciousLog,
   printClientHelp,
   printQuit,
 } from "../internal/gamelogic/gamelogic.js";
@@ -95,7 +96,16 @@ async function main() {
     } else if (firstWord === "help") {
       printClientHelp();
     } else if (firstWord === "spam") {
-      console.log("Spamming is not allowed yet!");
+      let secondWord = Number(inputs[1]);
+      if (!secondWord) {
+        console.log("please provide a second arg");
+      }
+
+      for (let i = 0; i < secondWord; i++) {
+        let malMsg = getMaliciousLog();
+
+        await publishGameLog(confChannel, username, malMsg);
+      }
     } else if (firstWord === "quit") {
       printQuit();
       break;
