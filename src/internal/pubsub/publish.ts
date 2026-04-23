@@ -1,3 +1,4 @@
+import { encode } from "@msgpack/msgpack";
 import type { ConfirmChannel } from "amqplib";
 import amqp from "amqplib";
 
@@ -59,4 +60,18 @@ export async function declareAndBind(
   await channel.bindQueue(queue.queue, exchange, key);
 
   return [channel, queue];
+}
+
+export async function publishMsgPack<T>(
+  ch: ConfirmChannel,
+  exchange: string,
+  routingKey: string,
+  value: T,
+): Promise<void> {
+  const encoded = encode(value);
+  const bytes = Buffer.from(encoded.buffer);
+
+  ch.publish(exchange, routingKey, bytes, {
+    contentType: "application/x-msgpack",
+  });
 }
